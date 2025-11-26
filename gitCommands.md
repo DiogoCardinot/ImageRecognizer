@@ -10,3 +10,9 @@ PARA BAIXAR AS ATUALIZAÇÕES DO REPOSITÓRIO
 
 git pull (baixa todos os novos arquivos que tem no repositório e não tem na sua máquina)
 
+
+COMANDOS PARA DIRETÓRIO
+
+ls -> lista todos os arquivos da pasta pai
+cd NomePasta -> acessa a pasta NomePasta
+
