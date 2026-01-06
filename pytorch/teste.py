@@ -31,7 +31,6 @@ def DefineLoader():
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
     return train_loader, test_loader, classes
     
-
 def CalcMeanAndStd():
     trainSet, testSet = DefineTrainSetTestSet()
     imgs = [item[0] for item in trainSet] # item[0] imagens e item[1] classe
@@ -56,13 +55,16 @@ class CNN(nn.Module):
         self.conv1 = nn.Conv2d(in_channels=3,out_channels=32,kernel_size=5, padding=1)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(2,2)
-        # in_features da primeira camada FC: conta
-        # in_features das demais camadas FC: out_features da camada anterior
-        self.fc1 = nn.Linear(in_features=64*3*3, out_features=15)
-        self.fc2 = nn.Linear(in_features=15, out_features=25)
+        # gap: global average pooling (converte altura e largura para 1) -> evita a necessidade de calculos do valor de in_features da primeira fc layer
+        self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        # ultima camada FC: out_features = total de classes
+        self.fc1 = nn.Linear(in_features=64, out_features=256)
+        self.fc2 = nn.Linear(in_features=256, out_features=10)
 
     def foward(self, x):
+        #conv+relu+pool (layer 1)
         x=self.pool(F.relu(self.conv1(x)))
+        #conv+relu+pool (layer 2)
         x=self.pool(F.relu(self.conv2(x)))
         x=torch.flatten(x,1)
         x=F.relu(self.fc1(x))
