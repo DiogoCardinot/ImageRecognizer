@@ -6,7 +6,6 @@ import torch
 import numpy as np
 #CNN
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
 import torch.optim as optim
 
@@ -46,20 +45,23 @@ def CalcMeanAndStd():
     std_b = imgs[:,2,:,:].std()
     print(std_r,std_g,std_b)
 
-
 class CNN(nn.Module):
     def __init__(self):
         super().__init__
         # in_channels da primeira camada: sempre 3 (matriz RGB)
         # in_channels das camadas seguintes: igual ao out_channel da camada anterior
-        self.conv1 = nn.Conv2d(in_channels=3,out_channels=32,kernel_size=5, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool2d(2,2)
-        # gap: global average pooling (converte altura e largura para 1) -> evita a necessidade de calculos do valor de in_features da primeira fc layer
-        self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        # (input size - kernel size) / stride + bias -> bias = 1 (camadas convolucionais)
+        # input size != in_channels (input size é o valor da largura e altura que sai da camada anterior)
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=5) # -> (tamanho do input, largura, altura)  largura, altura = (32-5)/1 +1 -> 28 -> (32,28,28)
+        # height/2 and width/2
+        self.pool = nn.MaxPool2d(2,2) # (32, 14, 14)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3) # (14-3)/1 + 1 -> 12 -> (64,12,12) -> pool -> (64, 6, 6)
+        # # gap: global average pooling (converte altura e largura para 1) -> evita a necessidade de calculos do valor de in_features da primeira fc layer
+        # self.gap = nn.AdaptiveAvgPool2d((1, 1))
         # ultima camada FC: out_features = total de classes
-        self.fc1 = nn.Linear(in_features=64, out_features=256)
-        self.fc2 = nn.Linear(in_features=256, out_features=10)
+        self.fc1 = nn.Linear(in_features=64*6*6, out_features=120)
+        self.fc2 = nn.Linear(in_features=120, out_features=84)
+        self.fc3 = nn.Linear(in_features=84, out_features=10)
 
     def foward(self, x):
         #conv+relu+pool (layer 1)
@@ -68,4 +70,6 @@ class CNN(nn.Module):
         x=self.pool(F.relu(self.conv2(x)))
         x=torch.flatten(x,1)
         x=F.relu(self.fc1(x))
-        return self.fc2(x)
+        x=F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
