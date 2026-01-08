@@ -1,9 +1,7 @@
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from multiprocessing import freeze_support
 import torch
-import numpy as np
 #CNN
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,40 +9,7 @@ import torch.optim as optim
 
 dataSet_root = "../data"
 num_epochs = 2
-
-def DefineTrainSetTestSet():
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.49139968, 0.48215827, 0.44653124), (0.24703233, 0.24348505, 0.26158768))])
-    trainSet = CIFAR10(root=dataSet_root, train= True, download=True, transform= transform)
-    print(trainSet)
-    print("\n"+"-"*100+"\n")
-    testSet = CIFAR10(root=dataSet_root, train=False, download=True, transform=transform)
-    print(testSet)
-
-    return trainSet, testSet
-
-def DefineLoader():
-    trainSet, testSet = DefineTrainSetTestSet()
-
-    train_loader = DataLoader(trainSet, batch_size=128, shuffle=True, num_workers=0)
-    test_loader = DataLoader(testSet, batch_size=128, shuffle=False)
-    classes = ('plane', 'car', 'bird', 'cat',
-           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-    return train_loader, test_loader, classes
-    
-def CalcMeanAndStd():
-    trainSet, testSet = DefineTrainSetTestSet()
-    imgs = [item[0] for item in trainSet] # item[0] imagens e item[1] classe
-    imgs = torch.stack(imgs, dim=0).numpy()
-
-    mean_r = imgs[:,0,:,:].mean()
-    mean_g = imgs[:,1,:,:].mean()
-    mean_b = imgs[:,2,:,:].mean()
-    print(mean_r,mean_g,mean_b)
-
-    std_r = imgs[:,0,:,:].std()
-    std_g = imgs[:,1,:,:].std()
-    std_b = imgs[:,2,:,:].std()
-    print(std_r,std_g,std_b)
+classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 class CNN(nn.Module):
     def __init__(self):
@@ -59,42 +24,71 @@ class CNN(nn.Module):
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3) # (14-3)/1 + 1 -> 12 -> (64,12,12) -> pool -> (64, 6, 6)
         # # gap: global average pooling (converte altura e largura para 1) -> evita a necessidade de calculos do valor de in_features da primeira fc layer
         # self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        # primeira camada FC: in_features = out_channels da ultima camada convolucional * H * W
         # ultima camada FC: out_features = total de classes
         self.fc1 = nn.Linear(in_features=64*6*6, out_features=120)
         self.fc2 = nn.Linear(in_features=120, out_features=84)
-        self.fc3 = nn.Linear(in_features=84, out_features=10)
-
-    def foward(self, x):
+        self.fc3 = nn.Linear(in_features=84, out_features=len(classes))
+    # tem que ser forward o nome
+    def forward(self, x):
         #conv+relu+pool (layer 1)
         x=self.pool(F.relu(self.conv1(x)))
         #conv+relu+pool (layer 2)
         x=self.pool(F.relu(self.conv2(x)))
+        #achatamento
         x=torch.flatten(x,1)
+        #primeira camada totalmente conectada
         x=F.relu(self.fc1(x))
+        #segunda camada totalmente conectada
         x=F.relu(self.fc2(x))
+        #terceira camada totalmente conectada
         x = self.fc3(x)
         return x
+
+
+def train(net, train_loader, optimizer, criterion, num_epochs, device):
+    net.train()
+    for epoch in range(num_epochs):
+        print(f'Epoca {epoch + 1} ---------------------')
+
+        running_loss = 0.0
+        for images, labels in train_loader:
+            images = images.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
+            #non_blocking=True -> faz copia assincrona, GPU trabalha enquanto os dados chegam
+            optimizer.zero_grad()
+
+            outputs = net(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+        print(f'Valor de Loss = {running_loss / len(train_loader)}\n')
+
+
+def main():
+    torch.backends.cudnn.benchmark = True
+    #define o dispositivo que vai executar, caso encontre gpu vai usar, caso n, vai usar cpu
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.49139968, 0.48215827, 0.44653124), (0.24703233, 0.24348505, 0.26158768))])
+    trainSet = CIFAR10(root=dataSet_root, train= True, download=True, transform= transform)
+    # print(trainSet)
+    # print("\n"+"-"*100+"\n")
+    testSet = CIFAR10(root=dataSet_root, train=False, download=True, transform=transform)
+    # print(testSet)
+
+    train_loader = DataLoader(trainSet, batch_size=128, shuffle=True, num_workers=4, pin_memory=True, persistent_workers=True)
+    test_loader = DataLoader(testSet, batch_size=128, shuffle=False, num_workers=4, pin_memory=True)
+
+    #envia a arquitetura para o device (gpu ou cpu)
+    net = CNN().to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+
+    train(net, train_loader, optimizer, criterion, num_epochs, device)
+
     
-net = CNN()
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-
-train_loader, test_loader, classes = DefineLoader()
-
-for epoch in range(num_epochs):
-    print(f'epoca: {epoch + 1}')
-
-    running_loss = 0.0
-    for i, data in enumerate(train_loader, 0):
-        images, labels = data
-
-        optimizer.zero_grad()
-
-        outputs = net(images)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-
-        running_loss += loss.item()
-    print(f'loss: {running_loss / len(train_loader)}')
-    
+if __name__ == '__main__':
+    main()
