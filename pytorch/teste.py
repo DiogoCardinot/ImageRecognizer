@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 dataSet_root = "../data"
+num_epochs = 2
 
 def DefineTrainSetTestSet():
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.49139968, 0.48215827, 0.44653124), (0.24703233, 0.24348505, 0.26158768))])
@@ -24,7 +25,7 @@ def DefineTrainSetTestSet():
 def DefineLoader():
     trainSet, testSet = DefineTrainSetTestSet()
 
-    train_loader = DataLoader(trainSet, batch_size=128, shuffle=True, num_workers=4)
+    train_loader = DataLoader(trainSet, batch_size=128, shuffle=True, num_workers=0)
     test_loader = DataLoader(testSet, batch_size=128, shuffle=False)
     classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -47,7 +48,7 @@ def CalcMeanAndStd():
 
 class CNN(nn.Module):
     def __init__(self):
-        super().__init__
+        super().__init__()
         # in_channels da primeira camada: sempre 3 (matriz RGB)
         # in_channels das camadas seguintes: igual ao out_channel da camada anterior
         # (input size - kernel size) / stride + bias -> bias = 1 (camadas convolucionais)
@@ -73,3 +74,27 @@ class CNN(nn.Module):
         x=F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+    
+net = CNN()
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+
+train_loader, test_loader, classes = DefineLoader()
+
+for epoch in range(num_epochs):
+    print(f'epoca: {epoch + 1}')
+
+    running_loss = 0.0
+    for i, data in enumerate(train_loader, 0):
+        images, labels = data
+
+        optimizer.zero_grad()
+
+        outputs = net(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+    print(f'loss: {running_loss / len(train_loader)}')
+    
