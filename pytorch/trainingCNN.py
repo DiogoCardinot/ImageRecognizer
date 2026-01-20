@@ -12,6 +12,7 @@ num_epochs = 2
 classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 class CNN(nn.Module):
+    # define as camadas
     def __init__(self):
         super().__init__()
         # in_channels da primeira camada: sempre 3 (matriz RGB)
@@ -28,8 +29,9 @@ class CNN(nn.Module):
         # ultima camada FC: out_features = total de classes
         self.fc1 = nn.Linear(in_features=64*6*6, out_features=120)
         self.fc2 = nn.Linear(in_features=120, out_features=84)
+        self.dropout = nn.Dropout(p=0.3)
         self.fc3 = nn.Linear(in_features=84, out_features=len(classes))
-    # tem que ser forward o nome
+    # tem que ser forward o nome (define como os dados vão passar pela rede)
     def forward(self, x):
         #conv+relu+pool (layer 1)
         x=self.pool(F.relu(self.conv1(x)))
@@ -41,6 +43,8 @@ class CNN(nn.Module):
         x=F.relu(self.fc1(x))
         #segunda camada totalmente conectada
         x=F.relu(self.fc2(x))
+        #dropout
+        x = self.dropout(x)
         #terceira camada totalmente conectada
         x = self.fc3(x)
         return x
@@ -67,6 +71,7 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
         print(f'Valor de Loss = {running_loss / len(train_loader)}\n')
 
 
+model_save_path = './model/pytorch_model.pth'
 def main():
     torch.backends.cudnn.benchmark = True
     #define o dispositivo que vai executar, caso encontre gpu vai usar, caso n, vai usar cpu
@@ -88,6 +93,13 @@ def main():
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
     train(net, train_loader, optimizer, criterion, num_epochs, device)
+
+    try:
+        torch.save(net.state_dict(), model_save_path)
+        print("Modelo salvo com sucesso!")
+    except Exception as e:
+        print("Erro ao salvar modelo!")
+        print(f'Detalhes: \n {e}')
 
     
 if __name__ == '__main__':
