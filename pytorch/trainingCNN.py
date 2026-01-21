@@ -2,10 +2,23 @@ from torchvision.datasets import CIFAR10
 from torchvision import transforms
 from torch.utils.data import DataLoader
 import torch
+import os
 #CNN
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+
+#REPRODUTIBILIDADE
+import numpy as np
+import random
+
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+
 
 dataSet_root = "../data"
 num_epochs = 2
@@ -71,9 +84,16 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
         print(f'Valor de Loss = {running_loss / len(train_loader)}\n')
 
 
+model_folder_path = './model/pytorch_model.pth'
+if not os.path.exists(model_folder_path):
+    os.makedirs(model_folder_path)
+
 model_save_path = './model/pytorch_model.pth'
+
 def main():
-    torch.backends.cudnn.benchmark = True
+    set_seed(seed=42)
+    torch.backends.cudnn.benchmark = False # Desempenho
+    torch.backends.cudnn.deterministic = True  # Reprodutibilidade
     #define o dispositivo que vai executar, caso encontre gpu vai usar, caso n, vai usar cpu
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -81,11 +101,8 @@ def main():
     trainSet = CIFAR10(root=dataSet_root, train= True, download=True, transform= transform)
     # print(trainSet)
     # print("\n"+"-"*100+"\n")
-    testSet = CIFAR10(root=dataSet_root, train=False, download=True, transform=transform)
-    # print(testSet)
-
+    
     train_loader = DataLoader(trainSet, batch_size=128, shuffle=True, num_workers=4, pin_memory=True, persistent_workers=True)
-    test_loader = DataLoader(testSet, batch_size=128, shuffle=False, num_workers=4, pin_memory=True)
 
     #envia a arquitetura para o device (gpu ou cpu)
     net = CNN().to(device)
@@ -101,6 +118,6 @@ def main():
         print("Erro ao salvar modelo!")
         print(f'Detalhes: \n {e}')
 
-    
+
 if __name__ == '__main__':
     main()
