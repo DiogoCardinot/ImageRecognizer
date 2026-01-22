@@ -76,6 +76,7 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
     batch_compute_times = [] #tempo necessário para o processamento, desconsiderando a conversão dos dados
     peaky_gpu_memory_per_epoch = []
     loss_per_epoch = []
+    accuracy_training = []
 
     for epoch in range(num_epochs):
         print(f'Epoca {epoch + 1} ---------------------')
@@ -87,7 +88,6 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
  
         total = 0
         correct = 0
-        accuracy_training = []
         end = time.time()
         for images, labels in train_loader:
             data_time = time.time()-end
@@ -109,8 +109,6 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
             loss.backward()
             optimizer.step()
             
-    
-
             if device.type == "cuda":
                 torch.cuda.synchronize()
             compute_time = time.time() - start_compute_time
@@ -125,7 +123,6 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
         time_per_epoch.append(time_total_epoch)
         loss_per_epoch.append(running_loss / len(train_loader))
         accuracy_training.append(correct/total)
-
 
         print(f'Valor de Loss = {running_loss / len(train_loader)}\n')
     return time_per_epoch, batch_data_times, batch_compute_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training
@@ -163,7 +160,6 @@ def saveMetrics(time_per_epoch, batch_data_times, batch_compute_times, peaky_gpu
     percent_usage_memory = [(m/total_mem_mb) for m in peaky_gpu_memory_per_epoch]
     mean_percentage_usage_memory = np.mean(percent_usage_memory)
     std_percentage_usage_memory = np.std(percent_usage_memory)
-
     metrics_pytorch = {
         #Time per epoch
         'TEMPO POR EPOCA': 'usado para identificar as informacoes por epoca',
@@ -194,6 +190,7 @@ def saveMetrics(time_per_epoch, batch_data_times, batch_compute_times, peaky_gpu
         'std_loss': loss_per_epoch.std(),
         #Accuracy Training
         'Acuracia do treinamento': 'verificar a porcentagem de acerto do treinamento',
+        'accuracy_training_vector': accuracy_training.tolist(), #usar para identificar a quantidade de épocas necessárias até chegar em um determinado valor
         'mean_accuracy_training': f'{accuracy_training.mean()}%',
         'std_accuracy_training': f'{accuracy_training.std()}',
     }
