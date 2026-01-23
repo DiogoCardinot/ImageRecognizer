@@ -219,6 +219,7 @@ def saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, p
         'Valores de loss': 'verificar convergencia do modelo',
         'mean_loss': loss_per_epoch.mean(),
         'std_loss': loss_per_epoch.std(),
+        'loss_per_epoch': loss_per_epoch.tolist(),
         #Accuracy Training
         'Acuracia do treinamento': 'verificar a porcentagem de acerto do treinamento',
         'accuracy_training_per_epoch_vector': accuracy_training_per_epoch.tolist(), #usar para identificar a quantidade de épocas necessárias até chegar em um determinado valor
