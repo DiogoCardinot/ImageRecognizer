@@ -18,16 +18,14 @@ import time
 #DATA SAVE
 import json
 
-
 def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
 
-
 dataSet_root = "../data"
-num_epochs = 15
+num_epochs = 100
 classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 class CNN(nn.Module):
@@ -72,11 +70,13 @@ class CNN(nn.Module):
 def train(net, train_loader, optimizer, criterion, num_epochs, device):
     net.train()
     time_per_epoch = []
-    batch_data_times = []  #tempo total para converter os dados e fazer o processo
-    batch_compute_times = [] #tempo necessário para o processamento, desconsiderando a conversão dos dados
     peaky_gpu_memory_per_epoch = []
     loss_per_epoch = []
-    accuracy_training = []
+    accuracy_training_per_epoch = []
+    #dados por batch
+    data_loading_batch_times = {}  #tempo total para converter os dados e fazer o processo
+    compute_batch_times = {} #tempo necessário para o processamento, desconsiderando a conversão dos dados
+    loss_batch = {}
 
     for epoch in range(num_epochs):
         print(f'Epoca {epoch + 1} ---------------------')
@@ -84,14 +84,21 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
             torch.cuda.synchronize()
             torch.cuda.reset_peak_memory_stats(device)
         time_start_epoch = time.time()
+
         running_loss = 0.0
- 
         total = 0
         correct = 0
+
+        if device.type == "cuda":
+            torch.cuda.synchronize()
         end = time.time()
+        data_loading_batch_times[epoch + 1] = []
+        compute_batch_times[epoch+1] = []
+        loss_batch[epoch+1] = []
+
         for images, labels in train_loader:
             data_time = time.time()-end
-            batch_data_times.append(data_time)
+            data_loading_batch_times[epoch + 1].append(data_time)
 
             images = images.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
@@ -112,20 +119,25 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
             if device.type == "cuda":
                 torch.cuda.synchronize()
             compute_time = time.time() - start_compute_time
-            batch_compute_times.append(compute_time)
+            compute_batch_times[epoch+1].append(compute_time)
 
+            loss_batch[epoch+1].append(loss.item())
             running_loss += loss.item()
+            if device.type == "cuda":
+                torch.cuda.synchronize()
             end = time.time()
+
         if device.type == "cuda":
             torch.cuda.synchronize()
             peaky_gpu_memory_per_epoch.append(torch.cuda.max_memory_allocated(device)/ (1024**2))
+
         time_total_epoch = time.time() - time_start_epoch
         time_per_epoch.append(time_total_epoch)
         loss_per_epoch.append(running_loss / len(train_loader))
-        accuracy_training.append(correct/total)
+        accuracy_training_per_epoch.append(correct/total)
 
         print(f'Valor de Loss = {running_loss / len(train_loader)}\n')
-    return time_per_epoch, batch_data_times, batch_compute_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training
+    return time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch
 
 
 model_folder_path = './model/pytorch_model.pth'
@@ -138,20 +150,18 @@ save_path = "./trainingMetrics"
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 
-def saveMetrics(time_per_epoch, batch_data_times, batch_compute_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training,  train_loader, device):
+def saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch, train_loader, device):
     time_per_epoch = np.array(time_per_epoch)
-    batch_data_times = np.array(batch_data_times)
-    batch_compute_times = np.array(batch_compute_times)
     peaky_gpu_memory_per_epoch= np.array(peaky_gpu_memory_per_epoch)
     loss_per_epoch = np.array(loss_per_epoch)
-    accuracy_training = np.array(accuracy_training)
+    accuracy_training_per_epoch = np.array(accuracy_training_per_epoch)
     
     mean_time_per_epoch = time_per_epoch.mean()
     std_time_per_epoch = time_per_epoch.std()
     total_time_training = time_per_epoch.sum()
     num_images = len(train_loader.dataset) * num_epochs
     images_per_second = num_images / total_time_training
-    time_per_batch = mean_time_per_epoch / len(train_loader)
+    time_per_batch = total_time_training / (len(train_loader)*num_epochs)
 
     #Total de memória da GPU
     total_mem_bytes = torch.cuda.get_device_properties(device).total_memory
@@ -160,39 +170,73 @@ def saveMetrics(time_per_epoch, batch_data_times, batch_compute_times, peaky_gpu
     percent_usage_memory = [(m/total_mem_mb) for m in peaky_gpu_memory_per_epoch]
     mean_percentage_usage_memory = np.mean(percent_usage_memory)
     std_percentage_usage_memory = np.std(percent_usage_memory)
+
+    #Batch Data
+    mean_batch_data_loading_time_per_epoch = []
+    std_batch_data_loading_time_per_epoch = []
+    total_batch_data_loading_time_per_epoch = []
+    
+    mean_batch_compute_time_per_epoch = []
+    std_batch_compute_time_per_epoch = []
+    total_time_batch_compute_per_epoch = []
+    
+    for epoch in range(num_epochs):
+        epoch_data_loading_batch_times = np.array(data_loading_batch_times[epoch+1])
+        mean_batch_data_loading_time_per_epoch.append(epoch_data_loading_batch_times.mean())
+        std_batch_data_loading_time_per_epoch.append(epoch_data_loading_batch_times.std())
+        total_batch_data_loading_time_per_epoch.append(epoch_data_loading_batch_times.sum())
+
+        epoch_compute_batch_times = np.array(compute_batch_times[epoch+1])
+        mean_batch_compute_time_per_epoch.append(epoch_compute_batch_times.mean())
+        std_batch_compute_time_per_epoch.append(epoch_compute_batch_times.std())
+        total_time_batch_compute_per_epoch.append(epoch_compute_batch_times.sum())
+
+    total_time_data_loading = np.array(total_batch_data_loading_time_per_epoch).sum()
+    total_time_compute = np.array(total_time_batch_compute_per_epoch).sum()
+
+    data_ratio = total_time_data_loading / total_time_training
+    compute_ratio = total_time_compute / total_time_training
+
     metrics_pytorch = {
         #Time per epoch
         'TEMPO POR EPOCA': 'usado para identificar as informacoes por epoca',
         'mean_time_per_epoch': mean_time_per_epoch,
         'std_time_per_epoch': std_time_per_epoch,
         'total_time_training': total_time_training,
+        'total_time_data_loading': total_time_data_loading,
+        'total_time_compute': total_time_compute,
         'images_per_second': images_per_second,
         'time_per_batch': time_per_batch,
-        # Batch data time
-        'TEMPO DE MANIPULACAO/CARREGAMENTO DOS DADOS POR BATCH':'tempo necessario para enviar os dados para o device',
-        'mean_batch_data_time': batch_data_times.mean(),
-        'std_batch_data_time': batch_data_times.std(),
-        'total_batch_data_time': batch_data_times.sum(),
-        #Batch compute time
-        'TEMPO DE TREINAMENTO DE FATO':'tempo necessario para realizar o treinamento',
-        'mean_batch_compute_time': batch_compute_times.mean(),
-        'std_batch_compute_time': batch_compute_times.std(),
-        'total_batch_compute_time': batch_compute_times.sum(),
+        'data_loading_ratio': data_ratio,
+        'compute_ratio': compute_ratio,
         #GPU peaky memory
         'Maximo uso da memeria da GPU':'mensura o maior valor de uso da memória da GPU por epoca',
         'mean_peaky_gpu_memory': peaky_gpu_memory_per_epoch.mean(),
         'std_peaky_gpu_memory': peaky_gpu_memory_per_epoch.std(),
-        'mean_usage_gpu_memory_percentage': f'{mean_percentage_usage_memory}%',
-        'std_usage_gpu_memory_percentage': f'{std_percentage_usage_memory}',
+        'mean_usage_gpu_memory_percentage': mean_percentage_usage_memory,
+        'std_usage_gpu_memory': std_percentage_usage_memory,
         #LOSS   
         'Valores de loss': 'verificar convergencia do modelo',
         'mean_loss': loss_per_epoch.mean(),
         'std_loss': loss_per_epoch.std(),
         #Accuracy Training
         'Acuracia do treinamento': 'verificar a porcentagem de acerto do treinamento',
-        'accuracy_training_vector': accuracy_training.tolist(), #usar para identificar a quantidade de épocas necessárias até chegar em um determinado valor
-        'mean_accuracy_training': f'{accuracy_training.mean()}%',
-        'std_accuracy_training': f'{accuracy_training.std()}',
+        'accuracy_training_per_epoch_vector': accuracy_training_per_epoch.tolist(), #usar para identificar a quantidade de épocas necessárias até chegar em um determinado valor
+        'mean_accuracy_training_per_epoch_percentage': accuracy_training_per_epoch.mean(),
+        'std_accuracy_training_per_epoch': accuracy_training_per_epoch.std(),
+        # Batch data time
+        'TEMPO DE MANIPULACAO/CARREGAMENTO DOS DADOS POR BATCH':'tempo necessario para enviar os dados para o device',
+        'mean_batch_data_loading_time_per_epoch': mean_batch_data_loading_time_per_epoch,
+        'std_batch_data_loading_time_per_epoch': std_batch_data_loading_time_per_epoch,
+        'total_batch_data_loading_time_per_epoch': total_batch_data_loading_time_per_epoch,
+        #Batch compute time
+        'TEMPO DE TREINAMENTO DE FATO':'tempo necessario para realizar o treinamento',
+        'mean_batch_compute_time_per_epoch': mean_batch_compute_time_per_epoch,
+        'std_batch_compute_time_per_epoch': std_batch_compute_time_per_epoch,
+        'total_batch_compute_per_epoch': total_time_batch_compute_per_epoch,
+        #Batch loss
+        'Batch loss': 'Loss de cada batch de cada epoca',
+        'loss_batch': {str(k): v for k, v in loss_batch.items()},
     }
     file_save_metrics_path = os.path.join(save_path, 'pytorch_metrics.json')
 
@@ -224,7 +268,7 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
-    time_per_epoch, batch_data_times, batch_compute_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training = train(net, train_loader, optimizer, criterion, num_epochs, device)
+    time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch = train(net, train_loader, optimizer, criterion, num_epochs, device)
 
     try:
         torch.save(net.state_dict(), model_save_path)
@@ -234,7 +278,7 @@ def main():
         print(f'Detalhes: \n {e}')
     
     try:
-        saveMetrics(time_per_epoch, batch_data_times, batch_compute_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training,  train_loader, device)
+        saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch, train_loader, device)
     except Exception as e:
         print(f'Erro ao salvar as métricas:\n{e}')
 
