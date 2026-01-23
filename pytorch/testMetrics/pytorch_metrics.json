@@ -1,0 +1,29 @@
+{
+    "final_accuracy": 71.25,
+    "final_accuracy_per_class": {
+        "plane": 72.4,
+        "car": 82.9,
+        "bird": 62.5,
+        "cat": 50.2,
+        "deer": 67.7,
+        "dog": 60.0,
+        "frog": 80.2,
+        "horse": 72.6,
+        "ship": 85.5,
+        "truck": 78.5
+    },
+    "total_time_test": 10.656819343566895,
+    "images_per_second": 938.3662871264313,
+    "peaky_gpu_memory": 36.49072265625,
+    "peaky_peaky_gpu_memory_percentage": 0.0029711942886658797,
+    "data_loading_ratio": 73.09375338102829,
+    "compute_ratio": 0.01817931654120973,
+    "Data loading": "metricas para carregar os dados a cada batch",
+    "total_data_loading_time": 778.9469249248505,
+    "mean_batch_data_loading_times": 9.860087657276589,
+    "std_batch_data_loading_times": 0.19164696046413318,
+    "Compute": "metricas para processar os dados a cada batch",
+    "total_compute_time": 0.19373369216918945,
+    "mean_batch_compute_times": 0.002452325217331512,
+    "std_batch_compute_times": 0.01581734274517406
+}

@@ -117,12 +117,19 @@ def saveMetrics(acuracia, acuracia_class, time_total_test, batch_data_loading_ti
     data_ratio = total_data_loading_time / time_total_test
     compute_ratio = total_compute_time / time_total_test
 
+    #Total de memória da GPU
+    total_mem_bytes = torch.cuda.get_device_properties(device).total_memory
+    total_mem_mb = total_mem_bytes / 1024**2
+
+    peaky_gpu_memory_percentage = peaky_gpu_memory/total_mem_mb
+
     metrics_pytorch = {
         'final_accuracy': acuracia,
         'final_accuracy_per_class': acuracia_class,
         'total_time_test': time_total_test,
         'images_per_second': images_per_second,
         'peaky_gpu_memory': peaky_gpu_memory,
+        'peaky_peaky_gpu_memory_percentage': peaky_gpu_memory_percentage,
         'data_loading_ratio': data_ratio,
         'compute_ratio': compute_ratio,
         #BATCH
