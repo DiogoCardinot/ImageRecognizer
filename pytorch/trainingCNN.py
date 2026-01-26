@@ -161,6 +161,8 @@ def saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, p
     total_time_training = time_per_epoch.sum()
     num_images = len(train_loader.dataset) * num_epochs
     images_per_second = num_images / total_time_training
+    images_per_second_epoch = [len(train_loader.dataset)/t for t in time_per_epoch]
+    images_per_second_epoch = np.array(images_per_second_epoch)
     time_per_batch = total_time_training / (len(train_loader)*num_epochs)
 
     #Total de memória da GPU
@@ -200,17 +202,20 @@ def saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, p
     metrics_pytorch = {
         #Time per epoch
         'TEMPO POR EPOCA': 'usado para identificar as informacoes por epoca',
+        'time_per_epoch': time_per_epoch.tolist(),
         'mean_time_per_epoch': mean_time_per_epoch,
         'std_time_per_epoch': std_time_per_epoch,
         'total_time_training': total_time_training,
         'total_time_data_loading': total_time_data_loading,
         'total_time_compute': total_time_compute,
         'images_per_second': images_per_second,
+        'images_per_second_epoch': images_per_second_epoch.tolist(),
         'time_per_batch': time_per_batch,
         'data_loading_ratio': data_ratio,
         'compute_ratio': compute_ratio,
         #GPU peaky memory
         'Maximo uso da memeria da GPU':'mensura o maior valor de uso da memória da GPU por epoca',
+        'peaky_gpu_memory_per_epoch': peaky_gpu_memory_per_epoch.tolist(),
         'mean_peaky_gpu_memory': peaky_gpu_memory_per_epoch.mean(),
         'std_peaky_gpu_memory': peaky_gpu_memory_per_epoch.std(),
         'mean_usage_gpu_memory_percentage': mean_percentage_usage_memory,
@@ -230,11 +235,13 @@ def saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, p
         'mean_batch_data_loading_time_per_epoch': mean_batch_data_loading_time_per_epoch,
         'std_batch_data_loading_time_per_epoch': std_batch_data_loading_time_per_epoch,
         'total_batch_data_loading_time_per_epoch': total_batch_data_loading_time_per_epoch,
+        'data_loading_batch_times': {str(k): v for k, v in data_loading_batch_times.items()},
         #Batch compute time
         'TEMPO DE TREINAMENTO DE FATO':'tempo necessario para realizar o treinamento',
         'mean_batch_compute_time_per_epoch': mean_batch_compute_time_per_epoch,
         'std_batch_compute_time_per_epoch': std_batch_compute_time_per_epoch,
         'total_batch_compute_per_epoch': total_time_batch_compute_per_epoch,
+        'compute_batch_times': {str(k): v for k, v in compute_batch_times.items()},
         #Batch loss
         'Batch loss': 'Loss de cada batch de cada epoca',
         'loss_batch': {str(k): v for k, v in loss_batch.items()},
