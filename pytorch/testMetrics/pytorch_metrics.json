@@ -12,18 +12,18 @@
         "ship": 85.5,
         "truck": 78.5
     },
-    "total_time_test": 10.656819343566895,
-    "images_per_second": 938.3662871264313,
+    "total_time_test": 11.359708070755005,
+    "images_per_second": 880.3043121983474,
     "peaky_gpu_memory": 36.49072265625,
     "peaky_peaky_gpu_memory_percentage": 0.0029711942886658797,
-    "data_loading_ratio": 73.09375338102829,
-    "compute_ratio": 0.01817931654120973,
+    "data_loading_ratio": 72.57805270357142,
+    "compute_ratio": 0.02574176686013698,
     "Data loading": "metricas para carregar os dados a cada batch",
-    "total_data_loading_time": 778.9469249248505,
-    "mean_batch_data_loading_times": 9.860087657276589,
-    "std_batch_data_loading_times": 0.19164696046413318,
+    "total_data_loading_time": 824.4654910564423,
+    "mean_batch_data_loading_times": 10.436272038689143,
+    "std_batch_data_loading_times": 0.21705411801989202,
     "Compute": "metricas para processar os dados a cada batch",
-    "total_compute_time": 0.19373369216918945,
-    "mean_batch_compute_times": 0.002452325217331512,
-    "std_batch_compute_times": 0.01581734274517406
+    "total_compute_time": 0.2924189567565918,
+    "mean_batch_compute_times": 0.00370150578172901,
+    "std_batch_compute_times": 0.019202744513335365
 }

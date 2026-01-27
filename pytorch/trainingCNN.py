@@ -96,6 +96,10 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
         compute_batch_times[epoch+1] = []
         loss_batch[epoch+1] = []
 
+        if epoch == num_epochs-1:
+            correct_pred = {classname: 0 for classname in classes}
+            total_pred = {classname: 0 for classname in classes}
+
         for images, labels in train_loader:
             data_time = time.time()-end
             data_loading_batch_times[epoch + 1].append(data_time)
@@ -127,9 +131,21 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
                 torch.cuda.synchronize()
             end = time.time()
 
+            if epoch==num_epochs-1:
+                for label, prediction in zip(labels, predicted):
+                    if label==prediction:
+                        correct_pred[classes[label]] += 1
+                    total_pred[classes[label]] += 1
+                
         if device.type == "cuda":
             torch.cuda.synchronize()
             peaky_gpu_memory_per_epoch.append(torch.cuda.max_memory_allocated(device)/ (1024**2))
+
+        if epoch == num_epochs-1:
+            accuracy_per_class = {classname: 0 for classname in classes}
+            for classname, correct_count in correct_pred.items():
+                accuracy_class = 100*(correct_count)/total_pred[classname]
+                accuracy_per_class[classname] = accuracy_class
 
         time_total_epoch = time.time() - time_start_epoch
         time_per_epoch.append(time_total_epoch)
@@ -137,7 +153,8 @@ def train(net, train_loader, optimizer, criterion, num_epochs, device):
         accuracy_training_per_epoch.append(correct/total)
 
         print(f'Valor de Loss = {running_loss / len(train_loader)}\n')
-    return time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch
+
+    return time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch, accuracy_per_class
 
 
 model_folder_path = './model/pytorch_model.pth'
@@ -150,7 +167,7 @@ save_path = "./trainingMetrics"
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 
-def saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch, train_loader, device):
+def saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch, accuracy_per_class, train_loader, device):
     time_per_epoch = np.array(time_per_epoch)
     peaky_gpu_memory_per_epoch= np.array(peaky_gpu_memory_per_epoch)
     loss_per_epoch = np.array(loss_per_epoch)
@@ -230,6 +247,7 @@ def saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, p
         'accuracy_training_per_epoch_vector': accuracy_training_per_epoch.tolist(), #usar para identificar a quantidade de épocas necessárias até chegar em um determinado valor
         'mean_accuracy_training_per_epoch_percentage': accuracy_training_per_epoch.mean(),
         'std_accuracy_training_per_epoch': accuracy_training_per_epoch.std(),
+        'accuracy_per_class': {str(k): v for k,v in accuracy_per_class.items()},
         # Batch data time
         'TEMPO DE MANIPULACAO/CARREGAMENTO DOS DADOS POR BATCH':'tempo necessario para enviar os dados para o device',
         'mean_batch_data_loading_time_per_epoch': mean_batch_data_loading_time_per_epoch,
@@ -276,7 +294,7 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
-    time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch = train(net, train_loader, optimizer, criterion, num_epochs, device)
+    time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch, accuracy_per_class = train(net, train_loader, optimizer, criterion, num_epochs, device)
 
     try:
         torch.save(net.state_dict(), model_save_path)
@@ -286,7 +304,7 @@ def main():
         print(f'Detalhes: \n {e}')
     
     try:
-        saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch, train_loader, device)
+        saveMetrics(time_per_epoch, data_loading_batch_times, compute_batch_times, peaky_gpu_memory_per_epoch, loss_per_epoch, accuracy_training_per_epoch, loss_batch, accuracy_per_class, train_loader, device)
     except Exception as e:
         print(f'Erro ao salvar as métricas:\n{e}')
 

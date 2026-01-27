@@ -3,10 +3,13 @@ import json
 import matplotlib.pyplot as plt
 
 training_pytorch_data = "./pytorch/trainingMetrics/pytorch_metrics.json"
+test_pytorch_data = "./pytorch/testMetrics/pytorch_metrics.json"
 
 with open(training_pytorch_data, mode='r') as file:
     pytorch_data = json.load(file)
 
+with open(test_pytorch_data, 'r') as file:
+    pytorch_data_test = json.load(file)
 
 def ComparativeTable():
     convergencia = 85   #taxa para convergencia desejada
@@ -163,11 +166,44 @@ def PlotImagesPerSecondPerEpoch():
     plt.show()
 
 
-ComparativeTable()
-PlotAccuracyPerEpoch()
-PlotLossPerEpoch()
-PlotDataLoadingAndComputePerEpoch()
-PlotTimePerEpoch()
-PlotGPUMemoryPerEpoch()
-PlotImagesPerSecondPerEpoch()
-PlotTimePerBatchOneEpoch()
+def PlotAccuracyPerClass():
+    accuracy_per_class_training_pytorch = pytorch_data['accuracy_per_class']
+    accuracy_per_class_test_pytorch =  pytorch_data_test['final_accuracy_per_class']
+
+    x_train = []
+    x_test = []
+    for classname, _ in accuracy_per_class_training_pytorch.items():
+        x_train.append(classname)
+
+    for classname, _ in accuracy_per_class_test_pytorch.items():
+        x_test.append(classname)
+    
+    fig, ax = plt.subplots(2, 1, figsize=(width_images*2,2*2*2))
+    ax[0].text(-0.15, 1.12, '(a)', transform=ax[0].transAxes, va='top', fontsize = 15)
+    ax[0].bar(x_train, accuracy_per_class_training_pytorch, color = 'purple', label = 'Data Loading')
+    ax[0].bar(x_test, accuracy_per_class_test_pytorch, bottom = accuracy_per_class_training_pytorch , color = 'black', label='Compute Time')
+    ax[1].text(-0.15, 1.15, '(b)', transform=ax[1].transAxes, va='top', fontsize = 15)
+    ax[1].bar(x_train, accuracy_per_class_training_pytorch, color = 'blue', label = 'Data Loading')
+    ax[1].bar(x_test, accuracy_per_class_test_pytorch, bottom = accuracy_per_class_training_pytorch , color = 'orange', label='Compute Time')
+
+    ax[0].set_xlabel(r'$Classname$')
+    ax[0].set_ylabel(r'$Accuracy$')
+
+    ax[1].set_xlabel(r'$Classname$')
+    ax[1].set_ylabel(r'$Accuracy$')
+
+    ax[0].legend(loc='best')
+    ax[1].legend(loc='best')
+    plt.tight_layout()
+    plt.show()
+
+
+# ComparativeTable()
+# PlotAccuracyPerEpoch()
+# PlotLossPerEpoch()
+# PlotDataLoadingAndComputePerEpoch()
+# PlotTimePerEpoch()
+# PlotGPUMemoryPerEpoch()
+# PlotImagesPerSecondPerEpoch()
+# PlotTimePerBatchOneEpoch()
+PlotAccuracyPerClass()
