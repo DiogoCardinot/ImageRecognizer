@@ -42,6 +42,8 @@ def Test(testLoader):
     batch_data_loading_times = []
     batch_compute_times = []
 
+    time_per_batch = []
+
     with torch.no_grad():
         if device.type == "cuda":
             torch.cuda.synchronize()
@@ -77,6 +79,8 @@ def Test(testLoader):
                 if label==prediction:
                     correct_pred[classes[label]] += 1
                 total_pred[classes[label]] += 1
+
+            time_per_batch.append(data_time + compute_time)
         if device.type== "cuda":
             torch.cuda.synchronize()
             peaky_gpu_memory= torch.cuda.max_memory_allocated(device)/ (1024**2)
@@ -91,14 +95,14 @@ def Test(testLoader):
         acuracia_class[classname] = acuracia_classes
 
     acuracia = (correct/total)*100
-    return acuracia, acuracia_class, time_total_test, batch_data_loading_times, batch_compute_times, peaky_gpu_memory
+    return acuracia, acuracia_class, time_total_test, batch_data_loading_times, batch_compute_times, peaky_gpu_memory, time_per_batch
 
 test_path = './testMetrics'
 
 if not os.path.exists(test_path):
     os.makedirs(test_path)
 
-def saveMetrics(acuracia, acuracia_class, time_total_test, batch_data_loading_times, batch_compute_times, peaky_gpu_memory, test_loader):
+def saveMetrics(acuracia, acuracia_class, time_total_test, batch_data_loading_times, batch_compute_times, peaky_gpu_memory, time_per_batch, test_loader):
 
     num_images = len(test_loader.dataset)
     images_per_second = num_images/time_total_test
@@ -123,6 +127,9 @@ def saveMetrics(acuracia, acuracia_class, time_total_test, batch_data_loading_ti
 
     peaky_gpu_memory_percentage = peaky_gpu_memory/total_mem_mb
 
+    time_per_batch = np.array(time_per_batch)
+    mean_time_per_batch = time_per_batch.mean()
+    std_time_per_batch = time_per_batch.std()
     metrics_pytorch = {
         'final_accuracy': acuracia,
         'final_accuracy_per_class': acuracia_class,
@@ -132,16 +139,21 @@ def saveMetrics(acuracia, acuracia_class, time_total_test, batch_data_loading_ti
         'peaky_peaky_gpu_memory_percentage': peaky_gpu_memory_percentage,
         'data_loading_ratio': data_ratio,
         'compute_ratio': compute_ratio,
+        'time_per_batch': time_per_batch.tolist(),
+        'mean_time_per_batch': mean_time_per_batch,
+        'std_time_per_batch': std_time_per_batch,
         #BATCH
         'Data loading': 'metricas para carregar os dados a cada batch',
         'total_data_loading_time': total_data_loading_time,
         'mean_batch_data_loading_times': mean_batch_data_loading_times,
         'std_batch_data_loading_times': std_batch_data_loading_times,
+        'batch_data_loading_times': batch_data_loading_times.tolist(),
         # ----------------------------------------------------------------
         'Compute': 'metricas para processar os dados a cada batch',
         'total_compute_time': total_compute_time,
         'mean_batch_compute_times': mean_batch_compute_times,
         'std_batch_compute_times': std_batch_compute_times,
+        'batch_compute_times': batch_compute_times.tolist(),
     }
     
     file_save_teste_metrics = os.path.join(test_path, 'pytorch_metrics.json')
@@ -163,7 +175,7 @@ def main():
     testSet = CIFAR10(root=dataSet_root, train=False, download=True, transform=transform)
     test_loader = DataLoader(testSet, batch_size=128, shuffle=False, num_workers=4, pin_memory=True)
 
-    acuracia, acuracia_class, time_total_test, batch_data_loading_times, batch_compute_times, peaky_gpu_memory = Test(test_loader)
+    acuracia, acuracia_class, time_total_test, batch_data_loading_times, batch_compute_times, peaky_gpu_memory, time_per_batch = Test(test_loader)
 
     acura = 0
     for classname, accuracy in acuracia_class.items():
@@ -176,7 +188,7 @@ def main():
     print(f"Acuracia Geral: {acuracia} %")
 
     try:
-        saveMetrics(acuracia, acuracia_class, time_total_test, batch_data_loading_times, batch_compute_times, peaky_gpu_memory, test_loader)
+        saveMetrics(acuracia, acuracia_class, time_total_test, batch_data_loading_times, batch_compute_times, peaky_gpu_memory,time_per_batch,  test_loader)
     except Exception as e:
         print(f"Erro ao salvar metricas:\n{e}")
     
