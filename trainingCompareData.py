@@ -1,5 +1,6 @@
 import json
 import matplotlib.pyplot as plt
+import numpy as np
 
 training_pytorch_data = "./pytorch/trainingMetrics/pytorch_metrics.json"
 test_pytorch_data = "./pytorch/testMetrics/pytorch_metrics.json"
@@ -168,29 +169,58 @@ def PlotAccuracyPerClass():
     accuracy_per_class_training_pytorch = pytorch_data['accuracy_per_class']
     accuracy_per_class_test_pytorch =  pytorch_data_test['final_accuracy_per_class']
 
-    x_train_pytorch = []
-    accuracy_class_train_pytorch = []
-    x_test_pytorch = []
-    accuracy_class_test_pytorch = []
-
-    for classname, accuracy in accuracy_per_class_training_pytorch.items():
-        x_train_pytorch.append(classname)
-        accuracy_class_train_pytorch.append(accuracy)
-
-    for classname, accuracy in accuracy_per_class_test_pytorch.items():
-        x_test_pytorch.append(classname)
-        accuracy_class_test_pytorch.append(accuracy)
-    
     fig, ax = plt.subplots(2, 1, figsize=(width_images*2,2*2*2))
-    ax[0].text(-0.15, 1.12, '(a)', transform=ax[0].transAxes, va='top', fontsize = 15)
-    ax[0].bar(x_train_pytorch, accuracy_class_train_pytorch, color = 'purple', label = 'Train')
-    ax[0].bar(x_test_pytorch, accuracy_class_test_pytorch, bottom = accuracy_class_train_pytorch , color = 'black', label='Test')
-    ax[1].text(-0.15, 1.15, '(b)', transform=ax[1].transAxes, va='top', fontsize = 15)
-    ax[1].bar(x_train_pytorch, accuracy_class_train_pytorch, color = 'blue', label = 'Train')
-    ax[1].bar(x_test_pytorch, accuracy_class_test_pytorch, bottom = accuracy_class_train_pytorch , color = 'orange', label='Test')
 
+    classes = list(accuracy_per_class_training_pytorch.keys())
+    x = np.arange(len(classes))
+    width = 0.35
+
+    ax[0].text(-0.15, 1.12, '(a)', transform=ax[0].transAxes, va='top', fontsize = 15)
+    rects1 = ax[0].bar(
+        x - width/2,
+        accuracy_per_class_training_pytorch.values(),
+        width,
+        label='Train',
+        color='purple'
+    )
+
+    rects2 = ax[0].bar(
+        x + width/2,
+        accuracy_per_class_test_pytorch.values(),
+        width,
+        label='Test',
+        color='black'
+    )
+
+    ax[0].bar_label(rects1, fmt='%.2f', padding=3)
+    ax[0].bar_label(rects2, fmt='%.2f', padding=3)
+    ax[0].set_xticks(x)
+    ax[0].set_xticklabels(classes, rotation=45, ha='center')
     ax[0].set_xlabel(r'$Classname$')
     ax[0].set_ylabel(r'$Accuracy$')
+
+    ax[1].text(-0.15, 1.15, '(b)', transform=ax[1].transAxes, va='top', fontsize = 15)
+    rects3 = ax[1].bar(
+        x - width/2,
+        accuracy_per_class_training_pytorch.values(),
+        width,
+        label='Train',
+        color='royalblue'
+    )
+
+    rects4 = ax[1].bar(
+        x + width/2,
+        accuracy_per_class_test_pytorch.values(),
+        width,
+        label='Test',
+        color='darkorange'
+    )
+
+    # ax[1].bar_label(rects3, fmt='%.2f', padding=3)
+    # ax[1].bar_label(rects4, fmt='%.2f', padding=3)
+    ax[1].set_xticks(x)
+    ax[1].set_xticklabels(classes, rotation=45, ha='center')
+
 
     ax[1].set_xlabel(r'$Classname$')
     ax[1].set_ylabel(r'$Accuracy$')
@@ -201,12 +231,12 @@ def PlotAccuracyPerClass():
     plt.show()
 
 
-# ComparativeTable()
-# PlotAccuracyPerEpoch()
-# PlotLossPerEpoch()
-# PlotDataLoadingAndComputePerEpoch()
-# PlotTimePerEpoch()
-# PlotGPUMemoryPerEpoch()
-# PlotImagesPerSecondPerEpoch()
-# PlotTimePerBatchOneEpoch()
+ComparativeTable()
+PlotAccuracyPerEpoch()
+PlotLossPerEpoch()
+PlotDataLoadingAndComputePerEpoch()
+PlotTimePerEpoch()
+PlotGPUMemoryPerEpoch()
+PlotImagesPerSecondPerEpoch()
+PlotTimePerBatchOneEpoch()
 PlotAccuracyPerClass()
